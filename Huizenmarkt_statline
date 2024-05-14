@@ -1,0 +1,76 @@
+import pandas as pd
+import dash
+from dash import html, dash_table, dcc, callback, Output, Input
+import plotly.express as px
+import dash_bootstrap_components as dbc
+
+# Package options
+pd.set_option('display.max_columns', 999)
+pd.set_option('display.width', 1000)
+
+# Load data
+df = pd.read_csv('assets/Bestaande_koopwoningen_voorbeeld.csv', delimiter = ';', decimal = ",")
+
+# Rename column
+df = df.rename(columns={'Gemiddelde verkoopprijs': "Gemiddelde verkoopprijs (in euro's)"})
+
+
+# Initialize app
+app = dash.Dash(__name__, external_stylesheets=[dbc.themes.MINTY])
+
+
+# App layout
+app.layout = html.Div([
+    dbc.Container(fluid = True, children=[
+        dbc.Row([
+            html.H3('Huizenprijzen Nederland 1996-2023', style={'textAlign': 'center', 'color': '#b30000'}),
+                html.Hr(),
+                html.Br(),
+            dbc.Col([
+
+                dcc.RadioItems(
+                    options=['Prijsindex verkoopprijzen', "Gemiddelde verkoopprijs (in euro's)", 'Verkochte woningen'],
+                    value='Prijsindex verkoopprijzen',
+                    inline=True,
+                    id='my-radio-buttons-final',
+                    inputStyle={"margin-left": "20px", "margin-right": "5px"}
+                ),
+                html.Br(),
+                dash_table.DataTable(
+                    data=df[['Perioden', 'Prijsindex verkoopprijzen', "Gemiddelde verkoopprijs (in euro's)", 'Verkochte woningen']].to_dict('records'),
+                    page_size=30,
+                    style_table={'overflowX': 'auto'},
+                )
+            ], width=6),
+            dbc.Col(className='graph', style={'margin': '0', 'padding': '0'}, children=[
+                html.H3('..', style={'textAlign': 'center', 'color': '#ffffff'}),
+                dcc.Graph(figure={}, id='histo-chart-final'),
+                html.Div("bron: CBS Statline", style = {'textAlign': 'center', 'fontSize': 12, 'color': 'gray'})
+            ], width=6)
+        ])
+    ])
+])
+
+# Add controls to build the interaction
+@app.callback(
+    Output(component_id='histo-chart-final', component_property='figure'),
+    Input(component_id='my-radio-buttons-final', component_property='value')
+)
+def update_graph(col_chosen):
+    fig = px.line(df, x='Perioden', y=col_chosen)
+    fig.update_layout(plot_bgcolor='#ffe6e6')
+    fig.update_traces(line=dict(color='#b30000'))
+
+    # Specify y-axis range and tick values for the variable "Prijsindex verkoopprijzen"
+    if col_chosen == 'Prijsindex verkoopprijzen':
+        fig.update_layout(yaxis_range=[0, 140])
+    elif col_chosen == "Gemiddelde verkoopprijs (in euro's)":
+        fig.update_layout(yaxis_range=[0, 500000])
+    else:
+        fig.update_layout(yaxis_range=[0, 300000])
+
+    return fig
+
+# Run the app
+if __name__ == '__main__':
+    app.run(debug=True)
