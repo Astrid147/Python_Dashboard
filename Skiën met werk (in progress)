@@ -1,0 +1,317 @@
+from dash import html, dash, dcc
+import firebase_admin
+from firebase_admin import db
+from dash.dependencies import Input, Output, State
+import dash_bootstrap_components as dbc
+import json
+
+
+# Initialize Firebase app
+cred_obj = firebase_admin.credentials.Certificate('secret/seo-op-de-latten-4-firebase-adminsdk-p84ov-76a9f0776f.json')
+default_app = firebase_admin.initialize_app(cred_obj, {
+	'databaseURL':'https://seo-op-de-latten-4-default-rtdb.europe-west1.firebasedatabase.app/'
+	})
+
+# Define a class to represent the data structure
+class SkiTripParticipant:
+    def __init__(self, naam, email, auto, uitrusting, shirt, bonte, lied, ski_stijl, apres_stijl):
+        self.naam = naam
+        self.email = email
+        self.auto = auto
+        self.uitrusting = uitrusting
+        self.shirt = shirt
+        self.bonte = bonte
+        self.lied = lied
+        self.ski_stijl = ski_stijl
+        self.apres_stijl = apres_stijl
+
+# Initialize app
+app = dash.Dash(__name__, external_stylesheets=[dbc.themes.MINTY])
+
+# App layout
+
+app.layout = html.Div([
+    dbc.Container(fluid=True, children=[
+        dbc.Row([
+            html.H3('SEO op de latten 4.0', style={'textAlign': 'center', 'color': '#002966'}),
+            html.H5('Voor het derde jaar op rij organiseert de SkiCie het leukste uitje van het jaar: de SEO-skitrip! ', style={'textAlign': 'center', 'color': '#4d94ff'}),
+            html.Hr(),
+            html.Br(),
+            dbc.Col(width=6, children=[
+                # Content for the left side
+
+                html.Div(
+                    html.H4("Gehst du mit?", style={'textAlign': 'center'})),
+
+                # Naam
+                html.Div([
+                    html.H6("Naam:", style={"font-weight": "bold"}),
+                    html.Div([
+                        dbc.Input(id="input_naam", placeholder="Type hier je naam", type="text", style = {"width": 200}),
+                        html.P(id="output_naam", style={'color': '#e60000', 'font-weight': "bold"}),
+                    ]),
+
+                # Email
+                    html.Br(),
+                    html.H6("Email:", style={"font-weight": "bold"}),
+                    html.Div([
+                        dbc.Input(id="input_email", placeholder="Email?", type="email", value = "", style = {"width": 200}),
+
+                        html.P(id="output_email", style={'color': '#e60000', 'font-weight': "bold"}),
+                    ]),
+
+                # Rijbewijs en auto
+                    html.Br(),
+                    html.H6("Heb je een rijbewijs en auto die je mee kan nemen?", style={"font-weight": "bold"}),
+                    dbc.RadioItems(
+                        id="input_auto",
+                        options=[
+                            {"label": "Alleen een rijbewijs", "value": 1},
+                            {"label": "Zowel een rijbewijs als een auto", "value": 2},
+                            {"label": "Geen van beide", "value": 3},
+                        ],
+                        value=None
+                    ),
+                    html.P(id="output_auto", style={'color': '#e60000', 'font-weight': "bold"}),
+                    html.Br(),
+
+                # Ski en snowboard uitrusting
+                    html.H6("Heb je eigen ski- snowboard uitrusting die je mee neemt?", style={"font-weight": "bold"}),
+                    dbc.RadioItems(
+                        id="input_uitrusting",
+                        options=[
+                            {"label": "Ja", "value": 1},
+                            {"label": "Nee", "value": 2},
+                            {"label": "Misschien", "value": 3},
+                        ],
+                        value=None
+                    ),
+                    html.P(id="output_uitrusting", style={'color': '#e60000', 'font-weight': "bold"}),
+
+                # Maat T-shirt
+                    html.Br(),
+                    html.H6("Wat is je maat shirt?", style={"font-weight": "bold"}),
+                    html.Div(
+                        [dcc.Dropdown(
+                            id="input_shirt",
+                            options=[
+                                {"label": "XS", "value": 1},
+                                {"label": "S", "value": 2},
+                                {"label": "M", "value": 3},
+                                {"label": "L", "value": 4},
+                                {"label": "XL", "value": 5},
+                                {"label": "XXL", "value": 6},
+                            ],
+                            style={"width": 200}
+                        ),
+                            html.P(id="output_shirt", style={'color': '#e60000', 'font-weight': "bold"}),
+                        ]
+                    ),
+                    html.Br(),
+
+                 # Bonte avond
+                    html.H6("Wat wordt jouw act op de bonte avond?", style={"font-weight": "bold"}),
+                    html.Div(
+                        [dbc.Input(id="input_bonte", placeholder="Vul hier je geweldige idee in", type="text"),
+                         html.Br(),
+                         html.P(id="output_bonte",  style={'color': '#e60000', 'font-weight': "bold"})
+                         ],
+                        style={"width": 400}
+                    ),
+
+                 # Muziek
+                    html.H6("Welk nummer mag niet ontbreken in de aprés skilijst?", style={"font-weight": "bold"}),
+                    html.Div(
+                        [dbc.Input(id="input_lied", placeholder="Het lekkerste hitje", type="text"),
+                         html.Br(),
+                         html.P(id="output_lied",  style={'color': '#e60000', 'font-weight': "bold"})
+                         ],
+                        style={"width": 400}
+                    ),
+
+                # Ski kwaliteit
+                    html.Div([
+                        html.H6("Wie beschrijft het best jouw skistijl?", style={"font-weight": "bold"}),
+                        dbc.Row([
+                            dbc.Col([
+                                dbc.RadioItems(
+                                    id="input_ski_stijl",
+                                    options=[
+                                        {"label": "Jo", "value": 1},
+                                        {"label": "Je", "value": 2},
+                                        {"label": "Wi", "value": 3}
+                                    ],
+                                    value=None
+                                ),
+                            ], width=6),
+                            dbc.Col([
+                                html.Img(src="assets/Kroko.JPG",
+                                         style={"width": 50})
+                            ], id="foto_ski", width=6),
+                        ])
+                    ]),
+                    html.Br(),
+
+                    # Ski kwaliteit
+                    html.Div([
+                        html.H6("Mijn apres ski stijl:", style={"font-weight": "bold"}),
+                        dbc.Row([
+                            dbc.Col([
+                                dbc.RadioItems(
+                                    id="input_apres_stijl",
+                                    options=[
+                                        {"label": "Jo", "value": 1},
+                                        {"label": "Na", "value": 2},
+                                        {"label": "De", "value": 3},
+                                        {"label": "Wi", "value": 4},
+                                        {"label": "Ir", "value": 5},
+                                        {"label": "As", "value": 6}
+                                    ],
+                                    value=None
+                                ),
+                            ], width=6),
+                            dbc.Col([
+                                html.Img(src="assets/Kroko.JPG",
+                                         style={"width": 50})
+                            ], id="foto_apres_stijl", width=6),
+                        ])
+                    ])
+
+
+
+
+                ]),
+                html.Br(),
+                html.Div(id="error-message"),
+                dbc.Button("Verstuur", color="#4d94ff", id="send-button", n_clicks=0,
+                           style={"background-color": "#002966"}),
+
+            ]),
+            dbc.Col(width=6, children=[
+                # Content for the right side
+                html.Div(
+                    html.H4("Informatie", style={'textAlign': 'center'})),
+                html.Br(),
+                html.Div(['Datum: 8 - 15 februari 2025',
+                          html.Br(),
+                          'Kosten vervoer en verblijf: € 600',
+                          html.Br(),
+                          'Locatie: Sankt Anton, Oostenrijk'],
+                         style={'textAlign': 'center', 'fontSize': '20px', 'color': '#002966'}),
+                html.Br(),
+                html.Img(src = "assets/SanktAnton.jpg", style={'width': 1000, 'height': 600})
+
+            ])
+        ]),
+    ])
+])
+
+
+@app.callback(
+    [Output("output_naam", "children"),
+     Output("output_email", "children"),
+     Output("output_auto", "children"),
+     Output("output_uitrusting", "children"),
+     Output("output_shirt", "children"),
+     Output("output_bonte", "children"),
+     Output("output_lied", "children"),
+     Output("error-message", "children"),
+     Output("foto_ski", "children"),
+     Output("foto_apres_stijl", "children")],
+    [Input("send-button", "n_clicks"),
+     Input('input_ski_stijl', 'value'),
+     Input('input_apres_stijl', 'value')],
+    [State("input_naam", "value"),
+     State("input_email", "value"),
+     State("input_auto", "value"),
+     State("input_uitrusting", "value"),
+     State("input_shirt", "value"),
+     State("input_bonte", "value"),
+     State("input_lied", "value")]
+)
+def update_output(n_clicks, selected_ski, selected_apres_stijl, input_naam, input_email, input_auto, input_uitrusting, input_shirt, input_bonte, input_lied):
+    output_naam = ""
+    output_email = ""
+    output_auto = ""
+    output_uitrusting = ""
+    output_shirt = ""
+    output_bonte = ""
+    output_lied = ""
+    error_message = ""
+
+    participant = SkiTripParticipant(
+        naam=input_naam,
+        email=input_email,
+        auto=input_auto,
+        uitrusting=input_uitrusting,
+        shirt=input_shirt,
+        bonte=input_bonte,
+        lied=input_lied,
+        ski_stijl=selected_ski,
+        apres_stijl=selected_apres_stijl
+    )
+
+    # Convert the participant object to a dictionary
+    participant_dict = participant.__dict__
+
+    # Write the participant data to Firebase Realtime Database
+    ref = db.reference("participants")
+    ref.push(participant_dict)
+
+    # Update image based on input_ski_stijl
+    if selected_ski == 1:
+        photo = html.Img(src="assets/Jo.jpg", style={'width': '250px', 'height': 'auto'})
+    elif selected_ski == 2:
+        photo = html.Img(src="assets/Je.jpg", style={'width': '250px', 'height': 'auto'})
+    elif selected_ski == 3:
+        photo = html.Img(src="assets/Wi_ski.png", style={'width': '250px', 'height': 'auto'})
+    else:
+        photo = html.Img(src="", style={'width': '250px', 'height': 'auto'})
+
+
+    if selected_apres_stijl == 1:
+        photo2 = html.Img(src="assets/Jo_apresski.png", style={'width': '250px', 'height':'auto'})
+    elif selected_apres_stijl == 2:
+        photo2 = html.Img(src="assets/Na.png", style={'width': '250px', 'height': 'auto'})
+    elif selected_apres_stijl == 3:
+        photo2 = html.Img(src="assets/De.png", style={'width': '250px', 'height': 'auto'})
+    elif selected_apres_stijl == 4:
+        photo2 = html.Img(src="assets/Wi_bril.png", style={'width': '250px', 'height': 'auto'})
+    elif selected_apres_stijl == 5:
+        photo2 = html.Img(src="assets/Ir.png", style={'width': '250px', 'height': 'auto'})
+    elif selected_apres_stijl == 6:
+        photo2 = html.Img(src="assets/As.png", style={'width': '250px', 'height': 'auto'})
+    else:
+        photo2 = html.Img(src="", style={'width': '250px', 'height': 'auto'})
+
+    if n_clicks:
+        if not input_naam or not input_email or input_auto is None or input_uitrusting is None or input_shirt is None or input_bonte is None or input_lied is None:
+            error_message = html.Div("Een antwoord op alle vragen is vereist", style={'font-weight': "bold", 'color': '#e60000'})
+
+            if not input_naam:
+                output_naam = "Naam is verplicht"
+            if not input_email:
+                output_email = "Email is verplicht"
+            if input_auto is None:
+                output_auto = "Een keuze is verplicht"
+            if input_uitrusting is None:
+                output_uitrusting = "Een keuze is verplicht"
+            if input_shirt is None:
+                output_shirt = "Een keuze is verplicht"
+            if input_bonte is None:
+                output_bonte = "Een keuze is verplicht"
+            if input_lied is None:
+                output_lied = "Een keuze is verplicht"
+
+        else:
+            error_message = "Je antwoorden zijn succesvol opgeslagen"
+
+
+    return output_naam, output_email, output_auto, output_uitrusting, output_shirt, output_bonte, output_lied, error_message, photo, photo2
+
+
+app.layout = html.Div([app.layout])
+
+# Run the app
+if __name__ == '__main__':
+    app.run_server(debug=True)
