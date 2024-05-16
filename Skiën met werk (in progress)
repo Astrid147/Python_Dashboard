@@ -7,9 +7,8 @@ import json
 
 
 # Initialize Firebase app
-cred_obj = firebase_admin.credentials.Certificate('secret/seo-op-de-latten-4-firebase-adminsdk-p84ov-76a9f0776f.json')
+cred_obj = firebase_admin.credentials.Certificate()
 default_app = firebase_admin.initialize_app(cred_obj, {
-	'databaseURL':'https://seo-op-de-latten-4-default-rtdb.europe-west1.firebasedatabase.app/'
 	})
 
 # Define a class to represent the data structure
